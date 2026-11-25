@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Apply Board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: one narrow working column. Summary strip, then a queue of role cards in rank order, then the copy-paste answer sheet. */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --fg:#161b26; --muted:#5b6577; --line:#d9dee8;
+  --accent:#2747c7; --accent-fg:#ffffff; --accent-soft:#e6ebfb;
+  --warn-bg:#fdf0d3; --warn-fg:#7a4a00; --ok-bg:#dcf3e4; --ok-fg:#14592f; --off-bg:#e8ebf0; --off-fg:#4d5666;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"Inter",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#10141c; --surface:#19202c; --fg:#e8ecf4; --muted:#9aa5b8; --line:#2c3545;
+  --accent:#8ea6ff; --accent-fg:#0d1326; --accent-soft:#222c4d;
+  --warn-bg:#3d2e0c; --warn-fg:#f4cf7c; --ok-bg:#143422; --ok-fg:#8fe0ab; --off-bg:#252d3b; --off-fg:#a7b1c2; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding:28px max(16px,env(safe-area-inset-right,0px)) 56px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1{font-family:var(--display);font-size:28px;font-weight:600;margin:0;letter-spacing:-.01em}
+h2{font-family:var(--display);font-size:17px;font-weight:600;margin:0}
+.sub{color:var(--muted);margin:4px 0 0}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:7px 12px}
+button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tab[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.list{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.top{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+.co{font-family:var(--display);font-size:19px;font-weight:600;line-height:1.25}
+.role{color:var(--muted)}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--off-bg);color:var(--off-fg);white-space:nowrap}
+.pill.warn{background:var(--warn-bg);color:var(--warn-fg)} .pill.ok{background:var(--ok-bg);color:var(--ok-fg)} .pill.q{background:var(--accent-soft);color:var(--accent)}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 16px;margin:0}
+.meta div{min-width:0} .meta dt{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)} .meta dd{margin:0;overflow-wrap:anywhere}
+.fit{margin:0} .flags{margin:0;padding-left:18px;color:var(--muted);font-size:14px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+a.go{display:inline-block;background:var(--accent);color:var(--accent-fg);text-decoration:none;font-weight:600;padding:8px 14px;border-radius:8px}
+a.ln{color:var(--accent);font-weight:500}
+.file{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:8px 10px}
+.file code{font-family:ui-monospace,Menlo,monospace;overflow-wrap:anywhere;min-width:0}
+.copy{font-size:12px;padding:4px 9px}
+.qa{display:flex;flex-direction:column;gap:6px} .qa .q{font-size:13px;color:var(--muted)}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 18px}
+.row{display:grid;grid-template-columns:minmax(110px,180px) 1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0} .row .k{color:var(--muted);font-size:13px} .row .v{min-width:0;overflow-wrap:anywhere}
+@media (max-width:480px){.row{grid-template-columns:1fr auto}.row .k{grid-column:1/-1}}
+.empty{color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:22px;text-align:center}
+.note{color:var(--muted);font-size:13px;margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Apply Board</h1>
+    <p class="sub" id="summary">Loading tonight's queue…</p>
+  </header>
+  <div class="tabs" role="group" aria-label="Filter roles">
+    <button class="tab" id="f-queued" aria-pressed="true">To apply</button>
+    <button class="tab" id="f-applied" aria-pressed="false">Applied</button>
+    <button class="tab" id="f-skipped" aria-pressed="false">Skipped</button>
+  </div>
+  <section class="list" id="list" aria-live="polite">
+    <div class="empty">Verified roles appear here after each nightly search, best fit first, each with its tailored resume and an application link.</div>
+  </section>
+  <section>
+    <h2>Form answers</h2>
+    <p class="sub" style="margin-bottom:10px">Copy and paste into any field the form asks for.</p>
+    <div class="sheet" id="sheet"><p class="note" style="padding:12px 0">Your standard answers load here (document <code>profile/answers</code>).</p></div>
+  </section>
+  <p class="note">Attach the named resume file from your resumes folder, then submit the form yourself.</p>
+</div>
+<script>
+/* Data source: a Claude artifact database (window.claude.use("db")), collection "roles".
+   Outside Claude, the page shows a message; use tracker/applications.csv instead. */
+(function(){
+  var roles=[], filter="queued", db=null;
+  var $=function(id){return document.getElementById(id)};
+  function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=String(text);return e}
+  function safeUrl(u){return typeof u==="string"&&/^https:\/\//.test(u)?u:null}
+  function copyBtn(text){
+    var b=el("button","copy","Copy");
+    b.addEventListener("click",function(){
+      var done=function(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy"},1400)};
+      try{navigator.clipboard.writeText(text).then(done,function(){b.textContent="Select and copy"})}catch(e){b.textContent="Select and copy"}
+    });
+    return b;
+  }
+  function setStatus(id,status,btn){
+    if(!db)return; btn.disabled=true;
+    db.doc("roles/"+id).update({status:status,statusOn:new Date().toISOString().slice(0,10)})
+      .catch(function(){btn.disabled=false;btn.textContent="Could not save. Try again"});
+  }
+  function card(r){
+    var c=el("article","card"), top=el("div","top"), left=el("div");
+    left.appendChild(el("div","co",r.company||"Unknown company"));
+    left.appendChild(el("div","role",r.role||""));
+    top.appendChild(left);
+    var pills=el("div","pills");
+    if(r.payCut===true)pills.appendChild(el("span","pill warn","Pay cut vs current"));
+    if(r.compStated)pills.appendChild(el("span","pill","Pay stated"));
+    var st=r.status||"queued";
+    pills.appendChild(el("span","pill "+(st==="applied"?"ok":st==="queued"?"q":""),st==="queued"?"To apply":st==="applied"?"Applied":"Skipped"));
+    top.appendChild(pills); c.appendChild(top);
+    var dl=el("dl","meta");
+    [["Location",r.location],["Work mode",r.mode],["Experience asked",r.years],["Pay",r.comp||"Not stated"],["Applies through",r.ats],["Queued",r.queuedOn]].forEach(function(p){
+      if(!p[1])return; var d=el("div"); d.appendChild(el("dt",null,p[0])); d.appendChild(el("dd",null,p[1])); dl.appendChild(d);
+    });
+    c.appendChild(dl);
+    if(r.fit)c.appendChild(el("p","fit",r.fit));
+    if(Array.isArray(r.flags)&&r.flags.length){var ul=el("ul","flags");r.flags.forEach(function(f){ul.appendChild(el("li",null,f))});c.appendChild(ul)}
+    if(r.resumeFile){
+      var f=el("div","file"); f.appendChild(el("span",null,"Attach:")); f.appendChild(el("code",null,r.resumeFile)); f.appendChild(copyBtn(r.resumeFile));
+      var ru=safeUrl(r.resumeUrl); if(ru){var a=el("a","ln","Open resume"); a.href=ru; a.target="_blank"; a.rel="noopener"; f.appendChild(a)}
+      c.appendChild(f);
+    }
+    if(Array.isArray(r.answers)&&r.answers.length){
+      r.answers.forEach(function(x){var q=el("div","qa"); q.appendChild(el("div","q",x.q)); var row=el("div","file"); row.appendChild(el("span",null,x.a)); row.appendChild(copyBtn(String(x.a))); q.appendChild(row); c.appendChild(q)});
+    }
+    var act=el("div","actions");
+    var au=safeUrl(r.applyUrl); if(au){var g=el("a","go","Open application"); g.href=au; g.target="_blank"; g.rel="noopener"; act.appendChild(g)}
+    var ju=safeUrl(r.jdUrl); if(ju&&ju!==au){var j=el("a","ln","Job description"); j.href=ju; j.target="_blank"; j.rel="noopener"; act.appendChild(j)}
+    if(db){
+      if(st!=="applied"){var b1=el("button",null,"Mark applied"); b1.addEventListener("click",function(){setStatus(r.id,"applied",b1)}); act.appendChild(b1)}
+      if(st==="queued"){var b2=el("button",null,"Skip"); b2.addEventListener("click",function(){setStatus(r.id,"skipped",b2)}); act.appendChild(b2)}
+      if(st!=="queued"){var b3=el("button",null,"Move back to queue"); b3.addEventListener("click",function(){setStatus(r.id,"queued",b3)}); act.appendChild(b3)}
+    }
+    c.appendChild(act);
+    return c;
+  }
+  function render(){
+    var n={queued:0,applied:0,skipped:0};
+    roles.forEach(function(r){var s=r.status||"queued"; if(n[s]!=null)n[s]++});
+    $("summary").textContent=n.queued+" to apply · "+n.applied+" applied · "+n.skipped+" skipped";
+    var list=$("list"); list.textContent="";
+    var shown=roles.filter(function(r){return (r.status||"queued")===filter})
+      .sort(function(a,b){return String(b.queuedOn||"").localeCompare(String(a.queuedOn||""))||(a.rank||99)-(b.rank||99)});
+    if(!shown.length){list.appendChild(el("div","empty",filter==="queued"?"Nothing waiting. New roles arrive after the next nightly search.":"Nothing here yet."));return}
+    shown.forEach(function(r){list.appendChild(card(r))});
+  }
+  function renderSheet(items){
+    var s=$("sheet"); s.textContent="";
+    items.forEach(function(x){var row=el("div","row"); row.appendChild(el("div","k",x.k)); row.appendChild(el("div","v",x.v)); row.appendChild(copyBtn(String(x.v))); s.appendChild(row)});
+  }
+  ["queued","applied","skipped"].forEach(function(f){
+    $("f-"+f).addEventListener("click",function(){filter=f;["queued","applied","skipped"].forEach(function(g){$("f-"+g).setAttribute("aria-pressed",String(g===f))});render()});
+  });
+  function fail(msg){$("summary").textContent=msg}
+  var timer=setTimeout(function(){fail("The queue is taking too long to load. Reopen the page to try again.")},10000);
+  if(!window.claude||!window.claude.use){clearTimeout(timer);fail("Open this page as a Claude artifact to see your queue (or use tracker/applications.csv).");return}
+  window.claude.use("db").then(function(d){
+    if(!d){clearTimeout(timer);fail("Sign in to Claude to see your queue.");return}
+    db=d;
+    db.collection("roles").onSnapshot(function(snap){
+      clearTimeout(timer);
+      roles=snap.docs.map(function(x){var o=x.data()||{};o.id=x.id;return o});
+      render();
+    },function(){clearTimeout(timer);fail("Could not load the queue.")});
+    db.doc("profile/answers").onSnapshot(function(s){
+      var o=s.exists?s.data():null; if(o&&Array.isArray(o.items)&&o.items.length)renderSheet(o.items);
+    },function(){});
+  });
+})();
+</script>
+</body>
+</html>

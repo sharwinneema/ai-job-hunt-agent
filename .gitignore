@@ -1,0 +1,11 @@
+# personal / generated
+out/
+*.pdf
+*.aux
+*.log
+*.out
+*.tex
+**/profile.private.md
+.env
+.DS_Store
+__pycache__/
